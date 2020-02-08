@@ -7,7 +7,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-##Run The Notebook
+## Run The Notebook
 To run the notebook:
 ```
 jupyter notebook
