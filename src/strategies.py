@@ -9,12 +9,19 @@ STRATEGIES = ['Martingale', 'JamesBond']
 
 class RouletteStrategy(object):
 
-    def __init__(self):
+    def __init__(self, min_bet: int, max_bet: int):
+        self.min_bet = min_bet
+        self.max_bet = max_bet
         self.history = []
 
     def place_bets(self, bet_sizes: list, bets: list):
         bets_played = [(bet_size, bet) for bet_size, bet in zip(bet_sizes, bets)]
         return bets_played
+
+    def limit_bet_to_maximum(self, bet_sizes: list):
+        for idx in range(len(bet_sizes)):
+            if bet_sizes[idx] > self.max_bet:
+                bet_sizes[idx] = self.max_bet
 
     def outcome(self, winning_number: int, bets_played: list):
         total = 0
@@ -90,10 +97,9 @@ class RouletteStrategy(object):
 
 class MartingaleStrategy(RouletteStrategy):
 
-    def __init__(self, min_bet: int):
-        self.min_bet = min_bet
+    def __init__(self, min_bet: int, max_bet: int):
         self.bets = [bets.available_bets['Red']]
-        super(RouletteStrategy, self).__init__()
+        super(MartingaleStrategy, self).__init__(min_bet, max_bet)
 
     def apply(self, results):
         self.history = []
@@ -106,6 +112,7 @@ class MartingaleStrategy(RouletteStrategy):
             else:
                 multiplier = 1
             bet_sizes = [self.min_bet * multiplier] * len(self.bets)
+            self.limit_bet_to_maximum(bet_sizes)
             bets_played = self.place_bets(bet_sizes, self.bets)
             spin_outcome = self.outcome(winning_number, bets_played)
             running_total += spin_outcome
@@ -120,12 +127,11 @@ class MartingaleStrategy(RouletteStrategy):
 
 class JamesBond(RouletteStrategy):
 
-    def __init__(self, min_bet: int):
-        self.min_bet = min_bet
+    def __init__(self, min_bet: int, max_bet: int):
         self.bets = [bets.available_bets['19 to 36'],
                      bets.available_bets['13 to 18'],
                      bets.available_bets['0']]
-        super(RouletteStrategy, self).__init__()
+        super(JamesBond, self).__init__(min_bet, max_bet)
 
     def apply(self, results):
         self.history = []
@@ -138,6 +144,7 @@ class JamesBond(RouletteStrategy):
             else:
                 multiplier = 1
             bet_sizes = [140 * multiplier, 50 * multiplier, 10]
+            self.limit_bet_to_maximum(bet_sizes)
             bets_played = self.place_bets(bet_sizes, self.bets)
             spin_outcome = self.outcome(winning_number, bets_played)
             running_total += spin_outcome
@@ -152,15 +159,16 @@ class JamesBond(RouletteStrategy):
 
 class RouletteStrategyFactory(object):
 
-    def __init__(self, min_bet: int):
+    def __init__(self, min_bet: int, max_bet: int):
         self.min_bet = min_bet
+        self.max_bet = max_bet
 
     def get(self, name):
 
         if name == 'Martingale':
-            return MartingaleStrategy(self.min_bet)
+            return MartingaleStrategy(self.min_bet, self.max_bet)
         elif name == 'JamesBond':
-            return JamesBond(self.min_bet)
+            return JamesBond(self.min_bet, self.max_bet)
         else:
             raise Exception(f'Strategy {name} is not supported')
 

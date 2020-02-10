@@ -20,12 +20,10 @@ def find_max_nonzero_bin(histo, bins):
 class RouletteSim(object):
 
     def __init__(self, max_num_spins: int,
-                 min_bet: int,
                  game_type: str,
                  strategy: strat.RouletteStrategy,
                  plot_results: bool):
         self.max_num_spins = max_num_spins
-        self.min_bet = min_bet
         self.game_type = game_type
         self.strategy = strategy
         self.plot_results = plot_results
