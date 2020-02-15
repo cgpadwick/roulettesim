@@ -125,6 +125,134 @@ class MartingaleStrategy(RouletteStrategy):
         return running_total, self.history
 
 
+class ReverseMartingaleStrategy(RouletteStrategy):
+
+    def __init__(self, min_bet: int, max_bet: int):
+        self.bets = [bets.available_bets['Red']]
+        super(ReverseMartingaleStrategy, self).__init__(min_bet, max_bet)
+
+    def apply(self, results):
+        self.history = []
+        running_total = 0
+        multiplier = 1
+        lost_last_play = False
+        for winning_number in results:
+            if not lost_last_play:
+                multiplier *= 2
+            else:
+                multiplier = 1
+            bet_sizes = [self.min_bet * multiplier] * len(self.bets)
+            self.limit_bet_to_maximum(bet_sizes)
+            bets_played = self.place_bets(bet_sizes, self.bets)
+            spin_outcome = self.outcome(winning_number, bets_played)
+            running_total += spin_outcome
+            lost_last_play = spin_outcome < 0
+            self.history.append({'winning_number': winning_number,
+                                 'bets_played': bets_played,
+                                 'outcome': spin_outcome,
+                                 'running_total': running_total})
+
+        return running_total, self.history
+
+
+class Fibonnaci(RouletteStrategy):
+
+    def __init__(self, min_bet: int, max_bet: int):
+        self.bets = [bets.available_bets['Red']]
+        self.seq = [1, 1]
+        idx = 1
+        while True:
+            next_digit = self.seq[idx] + self.seq[idx-1]
+            if next_digit < max_bet:
+                self.seq.append(next_digit)
+                idx += 1
+            else:
+                break
+
+        for i in range(2, len(self.seq)):
+            assert self.seq[i] == (self.seq[i-1] + self.seq[i-2])
+        self.seq_idx = 0
+
+        super(Fibonnaci, self).__init__(min_bet, max_bet)
+
+    def apply(self, results):
+        self.history = []
+        running_total = 0
+        lost_last_play = False
+        for winning_number in results:
+            if lost_last_play:
+                self.seq_idx += 1
+            else:
+                self.seq_idx -= 2
+            if self.seq_idx < 0:
+                self.seq_idx = 0
+            if self.seq_idx > len(self.seq) - 1:
+                self.seq_idx = len(self.seq) - 1
+
+            bet_sizes = [self.min_bet * self.seq[self.seq_idx]] * len(self.bets)
+            self.limit_bet_to_maximum(bet_sizes)
+            bets_played = self.place_bets(bet_sizes, self.bets)
+            spin_outcome = self.outcome(winning_number, bets_played)
+            running_total += spin_outcome
+            lost_last_play = spin_outcome < 0
+            self.history.append({'winning_number': winning_number,
+                                 'bets_played': bets_played,
+                                 'outcome': spin_outcome,
+                                 'running_total': running_total})
+
+        return running_total, self.history
+
+
+class Labouchere(RouletteStrategy):
+
+    def __init__(self, min_bet: int, max_bet: int, num_spins: int = 100):
+        self.bets = [bets.available_bets['Red']]
+        goal = 1000
+        self.seq = []
+        sum = 0
+        while True:
+            num = np.random.randint(1, 20)
+            sum += num
+            if sum <= goal:
+                self.seq.append(num)
+            else:
+                break
+
+        assert np.sum(self.seq) <= goal
+        print(self.seq)
+        print(np.sum(self.seq))
+        print(len(self.seq))
+
+        super(Labouchere, self).__init__(min_bet, max_bet)
+
+    def apply(self, results):
+        self.history = []
+        running_total = 0
+        lost_last_play = False
+        for winning_number in results:
+            if lost_last_play:
+                self.seq_idx += 1
+            else:
+                self.seq_idx -= 2
+            if self.seq_idx < 0:
+                self.seq_idx = 0
+            if self.seq_idx > len(self.seq) - 1:
+                self.seq_idx = len(self.seq) - 1
+
+            bet_sizes = [self.min_bet * self.seq[self.seq_idx]] * len(self.bets)
+            self.limit_bet_to_maximum(bet_sizes)
+            bets_played = self.place_bets(bet_sizes, self.bets)
+            spin_outcome = self.outcome(winning_number, bets_played)
+            running_total += spin_outcome
+            lost_last_play = spin_outcome < 0
+            self.history.append({'winning_number': winning_number,
+                                 'bets_played': bets_played,
+                                 'outcome': spin_outcome,
+                                 'running_total': running_total})
+
+        return running_total, self.history
+
+
 class JamesBond(RouletteStrategy):
 
     def __init__(self, min_bet: int, max_bet: int):
@@ -169,6 +297,12 @@ class RouletteStrategyFactory(object):
             return MartingaleStrategy(self.min_bet, self.max_bet)
         elif name == 'JamesBond':
             return JamesBond(self.min_bet, self.max_bet)
+        elif name == 'ReverseMartingale':
+            return ReverseMartingaleStrategy(self.min_bet, self.max_bet)
+        elif name == 'Fibonnaci':
+            return Fibonnaci(self.min_bet, self.max_bet)
+        elif name == 'Labouchere':
+            return Labouchere(self.min_bet, self.max_bet)
         else:
             raise Exception(f'Strategy {name} is not supported')
 
